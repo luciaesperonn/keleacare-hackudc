@@ -104,4 +104,4 @@ Las contribuciones al proyecto son bienvenidas. Para colaborar:
 
 ## Créditos y Contribuyentes
 
-Este proyecto ha sido desarrollado por un equipo multidisciplinario como parte de una hackathon. Agradecemos todas las contribuciones y apoyo recibido.
+Este proyecto ha sido desarrollado por un equipo de estudiantes de IA como parte de una hackathon. Agradecemos todas las contribuciones y apoyo recibido.
