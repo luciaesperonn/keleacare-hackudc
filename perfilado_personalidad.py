@@ -35,7 +35,7 @@ class PerfiladoPersonalidad:
 
         if st.button("Save personality"):
             if personalidad:
-                self.guardar_personalidad(personality)
+                self.guardar_personalidad(personalidad)
                 st.success("Personality saved successfully!")
             else:
                 st.warning("Please enter your test result.")

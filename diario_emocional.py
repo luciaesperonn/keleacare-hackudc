@@ -69,7 +69,7 @@ class DiarioEmocional:
         Uses a a chatbot to summarize a text based on a given emotion.
         """
         # Crea un prompt para solicitar el resumen del texto
-        prompt = f"Please write directly the reason for the feeling {emotion} in this text:{text}."
+        prompt = f"Please write directly the reason for the feeling {emocion} in this text:{texto}."
         # Llama al método 'llamar_chatbot' del objeto 'chatbot'
         respuesta = self.chatbot.llamar_chatbot(prompt, max_tokens=max_tokens, system_personality=system_personality)
         return respuesta
