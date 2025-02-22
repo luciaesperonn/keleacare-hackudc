@@ -1,7 +1,7 @@
 import os
 import streamlit as st
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from chatbot import llamar_chatbot
+from chatbot import Chatbot
 
 
 class DiarioEmocional:
@@ -9,6 +9,7 @@ class DiarioEmocional:
         self.archivo_diario = "diario.txt"  # Archivo donde se guardan las entradas
         self.analyzer = SentimentIntensityAnalyzer()  # Inicializa el analizador de VADER
         self.diario = self.cargar_diario()  # Carga las entradas previas del diario
+        self.chatbot = Chatbot()
 
     def cargar_diario(self):
         """
@@ -39,26 +40,35 @@ class DiarioEmocional:
         else:
             return "neutral"  # Emoción neutral
 
-    def resumir_texto(self, texto, max_tokens=50, system_personality="Eres un agente especializado en resúmenes, se te pasará un texto y tendrás que resumir en pocas palabras la razón del sentimiento"):
-            respuesta = llamar_chatbot(texto, max_tokens, system_personality)
-            return respuesta
+    def resumir_texto(self, texto, emocion, max_tokens=50, system_personality="Eres un agente especializado en resúmenes extremadamente cortos."):
+        """
+        Utiliza el chatbot para resumir el texto.
+        """
+        # Crea un prompt para solicitar el resumen del texto
+        prompt = f"Por favor, obtén la razón del sentimiento {emocion} en este texto:\n\n{texto}"
+        # Llama al método 'llamar_chatbot' del objeto 'chatbot'
+        respuesta = self.chatbot.llamar_chatbot(prompt, max_tokens=max_tokens, system_personality=system_personality)
+        return respuesta
 
     def mostrar_diario(self):
         st.title("Diario Emocional")
         user_input = st.text_area("Escribe sobre tu día...")
 
         if st.button("Guardar entrada"):
-            
-            resumen = self.resumir_texto(user_input)
+            emocion = self.analizar_emocion(user_input)
+            resumen = self.resumir_texto(texto=user_input, emocion=emocion)
             if not resumen:
                 st.error("No se pudo generar un resumen. Inténtalo de nuevo.")
                 return
-            emocion = self.analizar_emocion(user_input)
-            self.diario.append({"texto": resumen, "emocion": emocion}) # texto es la razón del sentimiento y emocion es el sentimiento
+            # Se guarda la entrada como un diccionario
+            self.diario.append({"texto": resumen, "emocion": emocion})
             st.success("Entrada guardada con éxito!")
 
-        if self.diario:
-            st.subheader("Tus entradas:")
-            for i, entrada in enumerate(self.diario):
-                st.write(f"Entrada {i + 1}: {entrada['texto']}")
+        st.subheader("Tus entradas:")
+        for index, entrada in enumerate(self.diario):
+            # Verificamos que la entrada sea un diccionario
+            if isinstance(entrada, dict):
+                st.write(f"Entrada {index + 1}: {entrada['texto']}")
                 st.write(f"Emoción detectada: {entrada['emocion']}")
+            else:
+                st.write(f"Entrada {index + 1}: {entrada}")

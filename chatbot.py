@@ -50,7 +50,7 @@ class Chatbot:
                 for objetivo in objetivos:
                     st.write(f"- Para lograr '{objetivo.strip()}', podrías intentar [sugerencia].")
 
-    def llamar_chatbot(self, prompt, model="mistral-7B", max_tokens=150, system_personality="Eres un asistente muy amable, siempre buscando animar a la gente"):
+    def llamar_chatbot(self, prompt, model="mistral-small-latest", max_tokens=150, system_personality="Eres un asistente muy amable, siempre buscando animar a la gente"):
         """
         Envía una consulta al chatbot de Mistral con el prompt proporcionado.
 
@@ -62,8 +62,8 @@ class Chatbot:
         Retorna:
             str: La respuesta generada por el chatbot, o False en caso de error.
         """
-        api_url = "https://api.mistral.ai/v1/chat"  # Ejemplo de URL, ajusta según la documentación oficial
-        api_key = "TU_API_KEY"  # Reemplaza con tu API key real
+        api_url = "https://api.mistral.ai/v1/chat/completions"  # Ejemplo de URL, ajusta según la documentación oficial
+        api_key = "fxjfZhsoN3PYMis5poL5rs8AHicjlwHO"  # Reemplaza con tu API key real
 
         payload = {
             "model": model,
