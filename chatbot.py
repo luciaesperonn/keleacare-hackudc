@@ -19,7 +19,7 @@ class Chatbot:
     
     def cargar_objetivos(self):
         """
-        Carga los objetivos desde FAISS si existen, o crea un nuevo índice.
+        Load targets from FAISS if they exist, or create a new index.
         """
         try:
             index = faiss.read_index("objetivos.index")
@@ -29,7 +29,7 @@ class Chatbot:
     
     def agregar_objetivo(self, objetivo):
         """
-        Agrega un nuevo objetivo al índice FAISS.
+        Adds a new target to the FAISS index.
         """
         vector = self.modelo_embeddings.encode([objetivo])
         self.faiss_index.add(np.array(vector, dtype=np.float32))
@@ -37,7 +37,7 @@ class Chatbot:
     
     def analizar_emocion(self, texto):
         """
-        Analiza la emoción predominante en el texto usando un modelo preentrenado.
+        Analyzes the predominant emotion in the text using a pre-trained model.
         """
         inputs = self.tokenizer(texto, return_tensors="pt", truncation=True, padding=True)
         with torch.no_grad():
@@ -47,16 +47,16 @@ class Chatbot:
         return emocion_predominante
     
     def enriquecer_prompt(self, texto, emocion, personalidad, emocion_diario, razon_diario, objetivos):
-        return f"Responde en función de la emoción ‘{emocion}’ manifestada por una persona de personalidad {personalidad}, quien ha experimentado recientemente sentimientos de {emocion_diario} debido a {razon_diario}. Si la situación lo permite, ofrece un consejo práctico que le ayude a alcanzar sus objetivos personales: {objetivos}. Analiza y responde basándote en el siguiente texto: {texto}"
+        return f"Responds based on the emotion ‘{emocion}’ manifested by a person of personality {personalidad}, who has recently experienced feelings of {emocion_diario} due to {razon_diario}. If the situation allows, offer practical advice to help him/her achieve his/her personal {objetivos}. But focus on analyze and respond based on the following text without forgiving the context previously given: {texto}"
 
     def obtener_info_desde_embeddings(self, k=3):
         """
-        Obtiene la información relevante desde los embeddings almacenados, recuperando los k más cercanos.
+        Obtains the relevant information from the stored embeddings, retrieving the nearest k.
         """
         def obtener_multiples_resultados(query):
             vector = self.modelo_embeddings.encode([query], convert_to_numpy=True)
             D, I = self.faiss_index.search(vector, k)
-            resultados = ["No disponible" if idx == -1 else f"Resultado {i+1} almacenado" for i, idx in enumerate(I[0])]
+            resultados = ["Not available" if idx == -1 else f"Result {i+1} stored" for i, idx in enumerate(I[0])]
             return resultados
         
         # Obtener múltiples valores para cada categoría
@@ -66,28 +66,28 @@ class Chatbot:
         objetivos = obtener_multiples_resultados("objetivos")
         
         # Imprimir resultados para verlos en consola
-        print(f"Personalidades obtenidas: {personalidad}")
-        print(f"Emociones del diario obtenidas: {emocion_diario}")
-        print(f"Razones del diario obtenidas: {razon_diario}")
-        print(f"Objetivos obtenidos: {objetivos}")
+        print(f"Obtained personalities: {personalidad}")
+        print(f"Obtained daily emotions: {emocion_diario}")
+        print(f"Obtained daily reasons: {razon_diario}")
+        print(f"Obtained objectives: {objetivos}")
         
         return personalidad, emocion_diario, razon_diario, objetivos
 
     def mostrar_chatbot(self):
-        st.title("Chatbot Empático")
-        user_input = st.text_input("Escribe algo...")
+        st.title("Empathic chatbot")
+        user_input = st.text_input("Write something...")
 
         if user_input:
             emocion = self.analizar_emocion(user_input)
             personalidad, emocion_diario, razon_diario, objetivos = self.obtener_info_desde_embeddings()
             
-            st.write(f"Emoción detectada: {emocion}")
+            st.write(f"Detected emotion: {emocion}")
             prompt_rico = self.enriquecer_prompt(user_input, emocion, personalidad, emocion_diario, razon_diario, objetivos)
             st.write(self.llamar_chatbot(prompt=prompt_rico))
 
 
     
-    def llamar_chatbot(self, prompt, model="mistral-small-latest", max_tokens=300, system_personality="Eres un asistente muy amable, siempre buscando animar a la gente"):
+    def llamar_chatbot(self, prompt, model="mistral-small-latest", max_tokens=300, system_personality="You are a very kind assistant, always looking to encourage people."):
         api_url = "https://api.mistral.ai/v1/chat/completions"
         api_key = "fxjfZhsoN3PYMis5poL5rs8AHicjlwHO"
 

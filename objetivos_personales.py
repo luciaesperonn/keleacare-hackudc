@@ -10,7 +10,7 @@ class ObjetivosPersonales:
     
     def cargar_objetivos(self):
         """
-        Carga los objetivos previos desde FAISS si existen, o crea un nuevo índice.
+        Load previous targets from FAISS if they exist, or create a new index.
         """
         try:
             index = faiss.read_index("objetivos.index")
@@ -20,22 +20,22 @@ class ObjetivosPersonales:
     
     def agregar_objetivo(self, objetivo):
         """
-        Agrega un nuevo objetivo al índice FAISS.
+        Adds a new target to the FAISS index.
         """
         vector = self.modelo_embeddings.encode([objetivo])
         self.faiss_index.add(np.array(vector, dtype=np.float32))
         faiss.write_index(self.faiss_index, "objetivos.index")
     
     def mostrar_objetivos(self):
-        st.title("Objetivos Personales")
-        st.write("Escribe tus objetivos personales. El chatbot los usará para darte recomendaciones personalizadas.")
+        st.title("Personal Goals")
+        st.write("Enter your personal goals. The chatbot will use them to give you personalized recommendations.")
 
         # Entrada de nuevos objetivos
-        nuevo_objetivo = st.text_input("Escribe un nuevo objetivo:")
+        nuevo_objetivo = st.text_input("Write a new goal:")
 
-        if st.button("Guardar objetivo"):
+        if st.button("Save the goal"):
             if nuevo_objetivo:
                 self.agregar_objetivo(nuevo_objetivo)  # Guarda el objetivo en FAISS
-                st.success("¡Objetivo guardado con éxito!")
+                st.success("Goal successfully saved!")
             else:
-                st.warning("Por favor, escribe un objetivo antes de guardar.")
+                st.warning("Please write a goal before saving.")
