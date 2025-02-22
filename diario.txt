@@ -1,0 +1,3 @@
+Texto: hola, estoy triste | Emoción: neutral
+Texto: i am sad | Emoción: negative
+Personalidad: Amable
