@@ -1,6 +1,7 @@
 import streamlit as st
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import os
+import requests
 
 class Chatbot:
     def __init__(self):
