@@ -4,11 +4,13 @@ import numpy as np
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 from sentence_transformers import SentenceTransformer
+from chatbot import Chatbot
 
 class DiarioEmocional:
     def __init__(self):
         self.modelo_embeddings = SentenceTransformer("all-MiniLM-L6-v2")
         self.index = self.cargar_diario()
+        self.chatbot = Chatbot()
         self.model_name = "bhadresh-savani/bert-base-uncased-emotion"
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
@@ -26,13 +28,6 @@ class DiarioEmocional:
         self.index.add(np.array(vector, dtype=np.float32))
         faiss.write_index(self.index, "diario.index")
 
-    def analizar_emocion(self, texto):
-        inputs = self.tokenizer(texto, return_tensors="pt", truncation=True, padding=True)
-        with torch.no_grad():
-            logits = self.model(**inputs).logits
-        probabilidades = torch.softmax(logits, dim=-1).squeeze().numpy()
-        emocion_predominante = self.emotion_labels[np.argmax(probabilidades)]
-        return emocion_predominante
 
     def recuperar_entradas_similares(self, texto, k=3):
         vector = self.modelo_embeddings.encode([texto])
@@ -44,7 +39,7 @@ class DiarioEmocional:
         st.title("Diario Emocional")
         user_input = st.text_area("Escribe sobre tu día...")
         if st.button("Guardar entrada"):
-            emocion = self.analizar_emocion(user_input)
+            emocion = self.chatbot.analizar_emocion(user_input)
             self.guardar_entrada(user_input)
             st.success("Entrada guardada con éxito!")
 

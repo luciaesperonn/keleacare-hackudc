@@ -2,6 +2,8 @@ import streamlit as st
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import requests
 import faiss
+import torch
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
@@ -15,6 +17,10 @@ class Chatbot:
         }
         self.modelo_embeddings = SentenceTransformer("all-MiniLM-L6-v2")
         self.faiss_index = self.cargar_objetivos()
+        self.model_name = "bhadresh-savani/bert-base-uncased-emotion"
+        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.emotion_labels = ["sadness", "joy", "love", "anger", "fear", "surprise"]
     
     def cargar_objetivos(self):
         """
@@ -34,14 +40,16 @@ class Chatbot:
         self.faiss_index.add(np.array(vector, dtype=np.float32))
         faiss.write_index(self.faiss_index, "objetivos.index")
     
-    def detectar_emocion(self, texto):
-        sentiment = self.analyzer.polarity_scores(texto)
-        if sentiment["compound"] >= 0.05:
-            return "positive"
-        elif sentiment["compound"] <= -0.05:
-            return "negative"
-        else:
-            return "neutral"
+    def analizar_emocion(self, texto):
+        """
+        Analiza la emoción predominante en el texto usando un modelo preentrenado.
+        """
+        inputs = self.tokenizer(texto, return_tensors="pt", truncation=True, padding=True)
+        with torch.no_grad():
+            logits = self.model(**inputs).logits
+        probabilidades = torch.softmax(logits, dim=-1).squeeze().numpy()
+        emocion_predominante = self.emotion_labels[np.argmax(probabilidades)]
+        return emocion_predominante
     
     def enriquecer_prompt(self, texto, emocion, personalidad, emocion_diario, razon_diario, objetivos):
         return f"Responde en función de la emoción ‘{emocion}’ manifestada por una persona de personalidad {personalidad}, quien ha experimentado recientemente sentimientos de {emocion_diario} debido a {razon_diario}. Si la situación lo permite, ofrece un consejo práctico que le ayude a alcanzar sus objetivos personales: {objetivos}. Analiza y responde basándote en el siguiente texto: {texto}"
@@ -51,7 +59,7 @@ class Chatbot:
         user_input = st.text_input("Escribe algo...")
 
         if user_input:
-            emocion = self.detectar_emocion(user_input)
+            emocion = self.analizar_emocion(user_input)
             st.write(f"Emoción detectada: {emocion}")
             prompt_rico = self.enriquecer_prompt(user_input, emocion, "amable", "tristeza", "una mala noticia", "ser más feliz")
             st.write(self.llamar_chatbot(prompt=prompt_rico))
