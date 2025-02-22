@@ -87,7 +87,7 @@ class Chatbot:
 
 
     
-    def llamar_chatbot(self, prompt, model="mistral-small-latest", max_tokens=150, system_personality="Eres un asistente muy amable, siempre buscando animar a la gente"):
+    def llamar_chatbot(self, prompt, model="mistral-small-latest", max_tokens=300, system_personality="Eres un asistente muy amable, siempre buscando animar a la gente"):
         api_url = "https://api.mistral.ai/v1/chat/completions"
         api_key = "fxjfZhsoN3PYMis5poL5rs8AHicjlwHO"
 
