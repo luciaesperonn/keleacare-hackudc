@@ -47,12 +47,3 @@ class DiarioEmocional:
             emocion = self.analizar_emocion(user_input)
             self.guardar_entrada(user_input)
             st.success("Entrada guardada con éxito!")
-
-        if st.button("Buscar entradas similares"):
-            similares = self.recuperar_entradas_similares(user_input)
-            if similares.any():
-                st.subheader("Entradas similares encontradas:")
-                for idx in similares[0]:
-                    st.write(f"- Entrada {idx + 1}")
-            else:
-                st.write("No se encontraron entradas similares.")
