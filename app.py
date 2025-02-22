@@ -8,8 +8,8 @@ from objetivos_personales import ObjetivosPersonales
 st.set_page_config(page_title="KeleaCare", layout="wide")
 
 # Menú de navegación
-st.sidebar.title("Navegación")
-opcion = st.sidebar.radio("Elige una opción:", ["Chatbot", "Diario Emocional", "Perfil de Personalidad", "Objetivos Personales"])
+st.sidebar.title("Navigation")
+opcion = st.sidebar.radio("Choose an option:", ["Chatbot", "Emotional Diary", "Personality Profile", "Personal Goals"])
 
 # Instancias de los módulos
 chatbot = Chatbot()
@@ -20,9 +20,9 @@ objetivos = ObjetivosPersonales()
 # Mostrar la opción seleccionada
 if opcion == "Chatbot":
     chatbot.mostrar_chatbot()
-elif opcion == "Diario Emocional":
+elif opcion == "Emotional Diary":
     diario.mostrar_diario()
-elif opcion == "Perfil de Personalidad":
+elif opcion == "Personality Profile":
     perfil.mostrar_perfil()
-elif opcion == "Objetivos Personales":
+elif opcion == "Personal Goals":
     objetivos.mostrar_objetivos()

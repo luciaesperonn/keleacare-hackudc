@@ -25,14 +25,13 @@ class DiarioEmocional:
 
     def guardar_entrada(self, texto):
         """
-        Guarda una entrada de texto en el índice FAISS.
+        Saves a text entry in the FAISS index.
 
         Args:
-            texto (str): El texto de la entrada que se va a guardar.
+            text (str): The text of the entry to be saved.
 
-        Este método codifica el texto utilizando el modelo de embeddings,
-        añade el vector resultante al índice FAISS y guarda el índice en un archivo.
-
+        This method encodes the text using the embeddings model,
+        adds the resulting vector to the FAISS index and saves the index to a file.
         Returns:
             None
         """
@@ -50,14 +49,14 @@ class DiarioEmocional:
 
     def recuperar_entradas_similares(self, texto, k=3):
         """
-        Recupera las entradas más similares a un texto dado utilizando un modelo de embeddings.
+        Retrieves the most similar entries to a given text using an embeddings model.
 
         Args:
-            texto (str): El texto para el cual se desean encontrar entradas similares.
-            k (int, opcional): El número de entradas similares a recuperar. Por defecto es 3.
+            text (str): The text for which you want to find similar entries.
+            k (int, optional): The number of similar entries to retrieve. Default is 3.
 
         Returns:
-            list: Una lista de índices de las entradas más similares. Si no se encuentran entradas, retorna una lista vacía.
+            list: An index list of the most similar entries. If no entries are found, returns an empty list.
         """
         vector = self.modelo_embeddings.encode([texto])
         vector = np.array(vector, dtype=np.float32)
@@ -65,36 +64,35 @@ class DiarioEmocional:
         return I if len(I) > 0 else []
 
 
-    def resumir_texto(self, texto, emocion, max_tokens=50, system_personality="Eres un agente especializado en resúmenes muy cortos."):
+    def resumir_texto(self, texto, emocion, max_tokens=50, system_personality="You are an agent specializing in very short summaries."):
         """
-        Utiliza el chatbot para resumir el texto.
+        Uses a a chatbot to summarize a text based on a given emotion.
         """
         # Crea un prompt para solicitar el resumen del texto
-        prompt = f"Por favor, escribe directamente la razón del sentimiento {emocion} en este texto:\n\n{texto}"
+        prompt = f"Please write directly the reason for the feeling {emotion} in this text:{text}."
         # Llama al método 'llamar_chatbot' del objeto 'chatbot'
         respuesta = self.chatbot.llamar_chatbot(prompt, max_tokens=max_tokens, system_personality=system_personality)
         return respuesta
     
     def mostrar_diario(self):
         """
-        Muestra la interfaz del diario emocional en Streamlit.
+        Displays the emotional diary interface in Streamlit.
 
-        Este método crea una interfaz en Streamlit donde el usuario puede escribir sobre su día,
-        guardar la entrada y ver las entradas guardadas en el diario.
-
+        This method creates an interface in Streamlit where the user can write about his day,
+        save the entry and view the entries saved in the journal.
         Args:
             None
 
         Returns:
             None
         """
-        st.title("Diario Emocional")
-        user_input = st.text_area("Escribe sobre tu día...")
+        st.title("Emotional Diary")
+        user_input = st.text_area("Write about your day...")
 
-        if st.button("Guardar entrada"):
+        if st.button("Save the entry"):
             emocion = self.analizar_emocion(user_input)
             resumen = self.resumir_texto(texto=user_input, emocion=emocion)
             self.guardar_entrada(resumen)
-            st.success("Entrada guardada con éxito!")
-            st.write(f"Emoción detectada: {emocion}")
-            st.write(f"Resumen de la entrada: {resumen}")
+            st.success("Entry saved successfully!")
+            st.write(f"Detected emotion: {emocion}")
+            st.write(f"Entry summary: {resumen}")

@@ -1,7 +1,0 @@
-Texto: hola, estoy triste | Emoción: neutral
-Texto: i am sad | Emoción: negative
-Personalidad: Amable
-Entrada 4: La razón del sentimiento de tristeza es que el padre castigó al hablante. | Emoción: sadness
-Entrada 5: La razón del sentimiento de enojo en el texto "today my boyfriend propossed" podría ser que la persona que escribió el mensaje esperaba una propuesta de matrimonio, pero la palabra "propossed" sugiere que la propuesta no fue realizada | Emoción: anger
-Entrada 6: El texto no contiene ninguna razón específica para el sentimiento de enojo (anger). | Emoción: anger
-Entrada 7: El sentimiento de amor en el texto se debe a la propuesta de matrimonio y la aceptación de la misma. | Emoción: love
