@@ -64,11 +64,37 @@ class DiarioEmocional:
         D, I = self.index.search(vector, k)  # Buscar las k entradas más similares
         return I if len(I) > 0 else []
 
+
+    def resumir_texto(self, texto, emocion, max_tokens=50, system_personality="Eres un agente especializado en resúmenes muy cortos."):
+        """
+        Utiliza el chatbot para resumir el texto.
+        """
+        # Crea un prompt para solicitar el resumen del texto
+        prompt = f"Por favor, escribe directamente la razón del sentimiento {emocion} en este texto:\n\n{texto}"
+        # Llama al método 'llamar_chatbot' del objeto 'chatbot'
+        respuesta = self.chatbot.llamar_chatbot(prompt, max_tokens=max_tokens, system_personality=system_personality)
+        return respuesta
+    
     def mostrar_diario(self):
+        """
+        Muestra la interfaz del diario emocional en Streamlit.
+
+        Este método crea una interfaz en Streamlit donde el usuario puede escribir sobre su día,
+        guardar la entrada y ver las entradas guardadas en el diario.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
         st.title("Diario Emocional")
         user_input = st.text_area("Escribe sobre tu día...")
+
         if st.button("Guardar entrada"):
-            emocion = self.chatbot.analizar_emocion(user_input)
-            self.guardar_entrada(user_input)
+            emocion = self.analizar_emocion(user_input)
+            resumen = self.resumir_texto(texto=user_input, emocion=emocion)
+            self.guardar_entrada(resumen)
             st.success("Entrada guardada con éxito!")
-            st.write(f"Emoción predominante: {emocion}")
+            st.write(f"Emoción detectada: {emocion}")
+            st.write(f"Resumen de la entrada: {resumen}")
