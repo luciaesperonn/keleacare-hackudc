@@ -126,7 +126,7 @@ class Chatbot:
 
 
     
-    def llamar_chatbot(self, prompt, model="mistral-small-latest", max_tokens=300, system_personality="You are a very kind assistant, always looking to encourage people."):
+    def llamar_chatbot(self, prompt, model="open-mistral-nemo", max_tokens=500, system_personality="You are a very kind assistant, always looking to encourage people."):
         """
         Llama al chatbot de Mistral AI y devuelve la respuesta generada.
         """
