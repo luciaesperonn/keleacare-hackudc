@@ -1,78 +1,65 @@
 import streamlit as st
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-import os
 import requests
+import faiss
+import numpy as np
+from sentence_transformers import SentenceTransformer
 
 class Chatbot:
     def __init__(self):
-        self.analyzer = SentimentIntensityAnalyzer()  # Inicializa el analizador de VADER
+        self.analyzer = SentimentIntensityAnalyzer()
         self.respuestas = {
             "positive": "¡Me alegra que te sientas feliz! ¿Qué te ha hecho sentir así?",
             "negative": "Lamento escuchar que te sientes triste. ¿Quieres hablar más sobre ello?",
             "neutral": "Gracias por compartir. ¿Hay algo más en lo que pueda ayudarte?"
         }
-        self.archivo_objetivos = "objetivos.txt"  # Archivo de objetivos
-
+        self.modelo_embeddings = SentenceTransformer("all-MiniLM-L6-v2")
+        self.faiss_index = self.cargar_objetivos()
+    
     def cargar_objetivos(self):
         """
-        Carga los objetivos del usuario desde el archivo de texto.
+        Carga los objetivos desde FAISS si existen, o crea un nuevo índice.
         """
-        if os.path.exists(self.archivo_objetivos):
-            with open(self.archivo_objetivos, "r", encoding="utf-8") as archivo:
-                return archivo.readlines()
-        return []
-
+        try:
+            index = faiss.read_index("objetivos.index")
+        except:
+            index = faiss.IndexFlatL2(384)  # Dimensión del modelo de embeddings
+        return index
+    
+    def agregar_objetivo(self, objetivo):
+        """
+        Agrega un nuevo objetivo al índice FAISS.
+        """
+        vector = self.modelo_embeddings.encode([objetivo])
+        self.faiss_index.add(np.array(vector, dtype=np.float32))
+        faiss.write_index(self.faiss_index, "objetivos.index")
+    
     def detectar_emocion(self, texto):
-        """
-        Analiza el texto usando VADER y devuelve la emoción predominante.
-        """
         sentiment = self.analyzer.polarity_scores(texto)
         if sentiment["compound"] >= 0.05:
-            return "positive"  # Emoción positiva
+            return "positive"
         elif sentiment["compound"] <= -0.05:
-            return "negative"  # Emoción negativa
+            return "negative"
         else:
-            return "neutral"  # Emoción neutral
-
-    def enriquecer_prompt(self, texto: str, emocion, personalidad, emocion_diario, razon_diario, objetivos):
-        """
-        Enriquece el prompt con la emoción y el texto proporcionados.
-        """
-        return f"Responde en función de la emoción “{emocion}” manifestada por una persona de personalidad {personalidad}, quien ha experimentado recientemente sentimientos de {emocion_diario} debido a {razon_diario}. Si la situación lo permite, ofrece un consejo práctico que le ayude a alcanzar sus objetivos personales: {objetivos}. Analiza y responde basándote en el siguiente texto: {texto}"
-    # f"{prompt}\n\nEmoción detectada: {emocion}\nTexto: {texto}"
-
+            return "neutral"
+    
+    def enriquecer_prompt(self, texto, emocion, personalidad, emocion_diario, razon_diario, objetivos):
+        return f"Responde en función de la emoción ‘{emocion}’ manifestada por una persona de personalidad {personalidad}, quien ha experimentado recientemente sentimientos de {emocion_diario} debido a {razon_diario}. Si la situación lo permite, ofrece un consejo práctico que le ayude a alcanzar sus objetivos personales: {objetivos}. Analiza y responde basándote en el siguiente texto: {texto}"
+    
     def mostrar_chatbot(self):
         st.title("Chatbot Empático")
         user_input = st.text_input("Escribe algo...")
 
         if user_input:
-            emocion = self.detectar_emocion(user_input)  # Detecta la emoción del texto
+            emocion = self.detectar_emocion(user_input)
             st.write(f"Emoción detectada: {emocion}")
             prompt_rico = self.enriquecer_prompt(user_input, emocion, "amable", "tristeza", "una mala noticia", "ser más feliz")
-            st.write(self.llamar_chatbot(prompt= prompt_rico))  # Llama al chatbot con el texto del usuario
+            st.write(self.llamar_chatbot(prompt=prompt_rico))
             st.write(self.respuestas.get(emocion, "Gracias por compartir. ¿Hay algo más en lo que pueda ayudarte?"))
-
-            # Mostrar recomendaciones basadas en los objetivos
-            objetivos = self.cargar_objetivos()
-            if objetivos:
-                st.subheader("Recomendaciones basadas en tus objetivos:")
-                for objetivo in objetivos:
-                    st.write(f"- Para lograr '{objetivo.strip()}', podrías intentar [sugerencia].")
-
+    
     def llamar_chatbot(self, prompt, model="mistral-small-latest", max_tokens=150, system_personality="Eres un asistente muy amable, siempre buscando animar a la gente"):
-        """
-        Envía una consulta al chatbot de Mistral con el prompt proporcionado.
-
-        Parámetros:
-            prompt (str): El mensaje que se enviará al chatbot.
-            model (str): El modelo a utilizar (por defecto "mistral-7B").
-            max_tokens (int): La cantidad máxima de tokens para la respuesta.
-
-        Retorna:
-            str: La respuesta generada por el chatbot, o False en caso de error.
-        """
-        api_url = "https://api.mistral.ai/v1/chat/completions"  # Ejemplo de URL, ajusta según la documentación oficial
-        api_key = "fxjfZhsoN3PYMis5poL5rs8AHicjlwHO"  # Reemplaza con tu API key real
+        api_url = "https://api.mistral.ai/v1/chat/completions"
+        api_key = "fxjfZhsoN3PYMis5poL5rs8AHicjlwHO"
 
         payload = {
             "model": model,

@@ -35,19 +35,33 @@
 #             st.subheader("Tu perfil de personalidad (Big Five):")
 #             st.write(self.rasgos)
 import streamlit as st
-import os
+import faiss
+import numpy as np
+from sentence_transformers import SentenceTransformer
 
 class PerfiladoPersonalidad:
     def __init__(self):
-        self.archivo_diario = "diario.txt"  # Mismo archivo que el diario emocional
-
+        self.modelo_embeddings = SentenceTransformer("all-MiniLM-L6-v2")
+        self.faiss_index = self.cargar_perfiles()
+    
+    def cargar_perfiles(self):
+        """
+        Carga el índice FAISS con perfiles de personalidad si existe, o crea uno nuevo.
+        """
+        try:
+            index = faiss.read_index("personalidades.index")
+        except:
+            index = faiss.IndexFlatL2(384)  # Dimensión del modelo de embeddings
+        return index
+    
     def guardar_personalidad(self, personalidad):
         """
-        Guarda el resultado del test de personalidad en el archivo diario.txt.
+        Guarda el resultado del test de personalidad en FAISS.
         """
-        with open(self.archivo_diario, "a", encoding="utf-8") as archivo:
-            archivo.write(f"Personalidad: {personalidad}\n")
-
+        vector = self.modelo_embeddings.encode([personalidad])
+        self.faiss_index.add(np.array(vector, dtype=np.float32))
+        faiss.write_index(self.faiss_index, "personalidades.index")
+    
     def mostrar_perfil(self):
         st.title("Perfil de Personalidad")
         st.write("Si quieres saber qué personalidad tienes, realiza este test: [Big Five Test](https://bigfive-test.com/es)")
