@@ -1,13 +1,18 @@
 import os
 import streamlit as st
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
+import numpy as np
 from chatbot import Chatbot
-
 
 class DiarioEmocional:
     def __init__(self):
         self.archivo_diario = "diario.txt"  # Archivo donde se guardan las entradas
-        self.analyzer = SentimentIntensityAnalyzer()  # Inicializa el analizador de VADER
+        # Cargar el modelo y el tokenizador para análisis de emociones
+        self.model_name = "bhadresh-savani/bert-base-uncased-emotion"
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
+        self.emotion_labels = ["sadness", "joy", "love", "anger", "fear", "surprise"]
         self.diario = self.cargar_diario()  # Carga las entradas previas del diario
         self.chatbot = Chatbot()
 
@@ -21,24 +26,31 @@ class DiarioEmocional:
                 return archivo.readlines()
         return []
 
-    def guardar_diario(self):
+    def guardar_diario(self, entrada):
         """
-        Guarda las entradas del diario en el archivo de texto.
+        Guarda una nueva entrada en el archivo de texto.
         """
         with open(self.archivo_diario, "a", encoding="utf-8") as archivo:
-            archivo.write(f"- Día {len(self.diario) + 1}: {self.diario[-1]}\n")
+            archivo.write(entrada + "\n")
 
     def analizar_emocion(self, texto):
         """
-        Analiza el texto usando VADER y devuelve la emoción predominante.
+        Analiza el texto usando el modelo BERT y devuelve la emoción predominante.
         """
-        sentiment = self.analyzer.polarity_scores(texto)
-        if sentiment["compound"] >= 0.05:
-            return "positive"  # Emoción positiva
-        elif sentiment["compound"] <= -0.05:
-            return "negative"  # Emoción negativa
-        else:
-            return "neutral"  # Emoción neutral
+        # Tokenizar el texto
+        inputs = self.tokenizer(texto, return_tensors="pt", truncation=True, padding=True)
+        
+        # Obtener las predicciones del modelo
+        with torch.no_grad():
+            logits = self.model(**inputs).logits
+        
+        # Calcular las probabilidades usando softmax
+        probabilidades = torch.softmax(logits, dim=-1).squeeze().numpy()
+        
+        # Obtener la emoción con la probabilidad más alta
+        emocion_predominante = self.emotion_labels[np.argmax(probabilidades)]
+        
+        return emocion_predominante
 
     def resumir_texto(self, texto, emocion, max_tokens=50, system_personality="Eres un agente especializado en resúmenes extremadamente cortos."):
         """
@@ -60,15 +72,20 @@ class DiarioEmocional:
             if not resumen:
                 st.error("No se pudo generar un resumen. Inténtalo de nuevo.")
                 return
-            # Se guarda la entrada como un diccionario
-            self.diario.append({"texto": resumen, "emocion": emocion})
+
+            # Formatear la entrada para guardarla en el archivo
+            entrada_formateada = f"Entrada {len(self.diario) + 1}: {resumen} | Emoción: {emocion}"
+            
+            # Guardar la entrada en el archivo
+            self.guardar_diario(entrada_formateada)
+            
+            # Añadir la entrada al diario en memoria
+            self.diario.append(entrada_formateada)
+            
             st.success("Entrada guardada con éxito!")
 
-        st.subheader("Tus entradas:")
-        for index, entrada in enumerate(self.diario):
-            # Verificamos que la entrada sea un diccionario
-            if isinstance(entrada, dict):
-                st.write(f"Entrada {index + 1}: {entrada['texto']}")
-                st.write(f"Emoción detectada: {entrada['emocion']}")
-            else:
-                st.write(f"Entrada {index + 1}: {entrada}")
+        # Mostrar las entradas del diario
+        if self.diario:
+            st.subheader("Tus entradas:")
+            for entrada in self.diario:
+                st.write(entrada)
