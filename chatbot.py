@@ -8,6 +8,42 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 class Chatbot:
+    """
+    Chatbot que analiza sentimientos, genera embeddings y clasifica emociones en textos.
+
+    Atributos:
+        analyzer: SentimentIntensityAnalyzer
+            Analizador de sentimientos de VADER.
+        modelo_embeddings: SentenceTransformer
+            Modelo de embeddings de frases basado en "all_MiniLM-L6-v2".
+        faiss_index: faiss.IndexFlatL2
+            Índice FAISS utilizado para la búsqueda eficiente de objetivos.
+        model_name: str
+            Nombre del modelo de clasificación de emociones ("bhadresh-savani/bert-base-uncased-emotion").
+        model: AutoModelForSequenceClassification
+            Modelo preentrenado de clasificación de emociones.
+        tokenizer: AutoTokenizer
+            Tokenizador asociado al modelo de clasificación de emociones.
+        emotion_labels: list
+            Lista de etiquetas de emociones utilizadas en la clasificación.
+    
+    Métodos:
+        cargar_objetivos():
+            Carga los objetivos desde FAISS si existen, o crea un nuevo índice.
+        agregar_objetivo(objetivo):
+            Añade un nuevo objetivo al índice FAISS.
+        analizar_emocion(texto):
+            Analiza la emoción predominante en el texto utilizando un modelo preentrenado.
+        enriquecer_prompt(texto, emocion, personalidad, emocion_diario, razon_diario, objetivos):
+            Enriquece el prompt con la información obtenida de los embeddings.
+        obtener_info_desde_embeddings(k=3):
+            Obtiene la información relevante de los embeddings almacenados, recuperando los k más cercanos.
+        mostrar_chatbot():
+            Muestra la interfaz del chatbot en Streamlit.
+        llamar_chatbot(prompt, model="mistral-small-latest", max_tokens=300, system_personality="You are a very kind assistant, always looking to encourage people."):
+            Llama al chatbot de Mistral AI y devuelve la respuesta generada.
+
+    """
     def __init__(self):
         self.analyzer = SentimentIntensityAnalyzer()
         self.modelo_embeddings = SentenceTransformer("all-MiniLM-L6-v2")
@@ -19,7 +55,8 @@ class Chatbot:
     
     def cargar_objetivos(self):
         """
-        Load targets from FAISS if they exist, or create a new index.
+        Carga los objetivos desde FAISS si existen, o crea un nuevo índice.
+
         """
         try:
             index = faiss.read_index("objetivos.index")
@@ -29,7 +66,7 @@ class Chatbot:
     
     def agregar_objetivo(self, objetivo):
         """
-        Adds a new target to the FAISS index.
+        Añade un nuevo objetivo al índice FAISS.
         """
         vector = self.modelo_embeddings.encode([objetivo])
         self.faiss_index.add(np.array(vector, dtype=np.float32))
@@ -37,7 +74,8 @@ class Chatbot:
     
     def analizar_emocion(self, texto):
         """
-        Analyzes the predominant emotion in the text using a pre-trained model.
+        Analiza la emoción predominante en el texto utilizando
+        un modelo preentrenado.
         """
         inputs = self.tokenizer(texto, return_tensors="pt", truncation=True, padding=True)
         with torch.no_grad():
@@ -47,11 +85,15 @@ class Chatbot:
         return emocion_predominante
     
     def enriquecer_prompt(self, texto, emocion, personalidad, emocion_diario, razon_diario, objetivos):
+        """
+        Enriquece el prompt con la información obtenida de los embeddings.
+        """
         return f"Responds based on the emotion ‘{emocion}’ manifested by a person of personality {personalidad}, who has recently experienced feelings of {emocion_diario} due to {razon_diario}. If the situation allows, offer practical advice to help him/her achieve his/her personal {objetivos}. But focus on analyze and respond based on the following text without forgiving the context previously given: {texto}"
 
     def obtener_info_desde_embeddings(self, k=3):
         """
-        Obtains the relevant information from the stored embeddings, retrieving the nearest k.
+        Obtiene la información relevante de los embeddings almacenados,
+        recuperando los k más cercanos.
         """
         def obtener_multiples_resultados(query):
             vector = self.modelo_embeddings.encode([query], convert_to_numpy=True)
@@ -65,15 +107,12 @@ class Chatbot:
         razon_diario = obtener_multiples_resultados("razon_diario")
         objetivos = obtener_multiples_resultados("objetivos")
         
-        # Imprimir resultados para verlos en consola
-        print(f"Obtained personalities: {personalidad}")
-        print(f"Obtained daily emotions: {emocion_diario}")
-        print(f"Obtained daily reasons: {razon_diario}")
-        print(f"Obtained objectives: {objetivos}")
-        
         return personalidad, emocion_diario, razon_diario, objetivos
 
     def mostrar_chatbot(self):
+        """
+        Muestra la interfaz del chatbot en Streamlit.
+        """
         st.title("Empathic chatbot")
         user_input = st.text_input("Write something...")
 
@@ -88,6 +127,9 @@ class Chatbot:
 
     
     def llamar_chatbot(self, prompt, model="mistral-small-latest", max_tokens=300, system_personality="You are a very kind assistant, always looking to encourage people."):
+        """
+        Llama al chatbot de Mistral AI y devuelve la respuesta generada.
+        """
         api_url = "https://api.mistral.ai/v1/chat/completions"
         api_key = "fxjfZhsoN3PYMis5poL5rs8AHicjlwHO"
 
