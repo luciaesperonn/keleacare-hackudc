@@ -48,3 +48,41 @@ class Chatbot:
                 st.subheader("Recomendaciones basadas en tus objetivos:")
                 for objetivo in objetivos:
                     st.write(f"- Para lograr '{objetivo.strip()}', podrías intentar [sugerencia].")
+
+    def llamar_chatbot(self, prompt, model="mistral-7B", max_tokens=150, system_personality="Eres un asistente muy amable, siempre buscando animar a la gente"):
+        """
+        Envía una consulta al chatbot de Mistral con el prompt proporcionado.
+
+        Parámetros:
+            prompt (str): El mensaje que se enviará al chatbot.
+            model (str): El modelo a utilizar (por defecto "mistral-7B").
+            max_tokens (int): La cantidad máxima de tokens para la respuesta.
+
+        Retorna:
+            str: La respuesta generada por el chatbot, o False en caso de error.
+        """
+        api_url = "https://api.mistral.ai/v1/chat"  # Ejemplo de URL, ajusta según la documentación oficial
+        api_key = "TU_API_KEY"  # Reemplaza con tu API key real
+
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_personality},
+                {"role": "user", "content": prompt}
+            ],
+            "max_tokens": max_tokens
+        }
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+
+        response = requests.post(api_url, json=payload, headers=headers)
+
+        if response.status_code == 200:
+            result = response.json()
+            respuesta = result.get('choices', [{}])[0].get('message', {}).get('content', '')
+            return respuesta.strip() if respuesta else False
+        else:
+            return False

@@ -1,6 +1,8 @@
 import os
 import streamlit as st
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from chatbot import llamar_chatbot
+
 
 class DiarioEmocional:
     def __init__(self):
@@ -37,21 +39,26 @@ class DiarioEmocional:
         else:
             return "neutral"  # Emoción neutral
 
+    def resumir_texto(self, texto, max_tokens=50, system_personality="Eres un agente especializado en resúmenes, se te pasará un texto y tendrás que resumir en pocas palabras la razón del sentimiento"):
+            respuesta = llamar_chatbot(texto, max_tokens, system_personality)
+            return respuesta
+
     def mostrar_diario(self):
-        """
-        Muestra la interfaz del diario emocional en Streamlit.
-        """
         st.title("Diario Emocional")
         user_input = st.text_area("Escribe sobre tu día...")
 
         if st.button("Guardar entrada"):
-            emocion = self.analizar_emocion(user_input)  # Analiza la emoción del texto
-            entrada = f"Texto: {user_input} | Emoción: {emocion}"  # Formato de la entrada
-            self.diario.append(entrada)  # Añade la entrada al diario
-            self.guardar_diario()  # Guarda el diario en el archivo de texto
+            
+            resumen = self.resumir_texto(user_input)
+            if not resumen:
+                st.error("No se pudo generar un resumen. Inténtalo de nuevo.")
+                return
+            emocion = self.analizar_emocion(user_input)
+            self.diario.append({"texto": resumen, "emocion": emocion}) # texto es la razón del sentimiento y emocion es el sentimiento
             st.success("Entrada guardada con éxito!")
 
         if self.diario:
             st.subheader("Tus entradas:")
             for i, entrada in enumerate(self.diario):
-                st.write(f"Entrada {i + 1}: {entrada}")
+                st.write(f"Entrada {i + 1}: {entrada['texto']}")
+                st.write(f"Emoción detectada: {entrada['emocion']}")
