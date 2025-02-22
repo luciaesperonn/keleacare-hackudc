@@ -10,11 +10,6 @@ from sentence_transformers import SentenceTransformer
 class Chatbot:
     def __init__(self):
         self.analyzer = SentimentIntensityAnalyzer()
-        self.respuestas = {
-            "positive": "¡Me alegra que te sientas feliz! ¿Qué te ha hecho sentir así?",
-            "negative": "Lamento escuchar que te sientes triste. ¿Quieres hablar más sobre ello?",
-            "neutral": "Gracias por compartir. ¿Hay algo más en lo que pueda ayudarte?"
-        }
         self.modelo_embeddings = SentenceTransformer("all-MiniLM-L6-v2")
         self.faiss_index = self.cargar_objetivos()
         self.model_name = "bhadresh-savani/bert-base-uncased-emotion"
@@ -53,17 +48,44 @@ class Chatbot:
     
     def enriquecer_prompt(self, texto, emocion, personalidad, emocion_diario, razon_diario, objetivos):
         return f"Responde en función de la emoción ‘{emocion}’ manifestada por una persona de personalidad {personalidad}, quien ha experimentado recientemente sentimientos de {emocion_diario} debido a {razon_diario}. Si la situación lo permite, ofrece un consejo práctico que le ayude a alcanzar sus objetivos personales: {objetivos}. Analiza y responde basándote en el siguiente texto: {texto}"
-    
+
+    def obtener_info_desde_embeddings(self, k=3):
+        """
+        Obtiene la información relevante desde los embeddings almacenados, recuperando los k más cercanos.
+        """
+        def obtener_multiples_resultados(query):
+            vector = self.modelo_embeddings.encode([query], convert_to_numpy=True)
+            D, I = self.faiss_index.search(vector, k)
+            resultados = ["No disponible" if idx == -1 else f"Resultado {i+1} almacenado" for i, idx in enumerate(I[0])]
+            return resultados
+        
+        # Obtener múltiples valores para cada categoría
+        personalidad = obtener_multiples_resultados("personalidad")
+        emocion_diario = obtener_multiples_resultados("emocion_diario")
+        razon_diario = obtener_multiples_resultados("razon_diario")
+        objetivos = obtener_multiples_resultados("objetivos")
+        
+        # Imprimir resultados para verlos en consola
+        print(f"Personalidades obtenidas: {personalidad}")
+        print(f"Emociones del diario obtenidas: {emocion_diario}")
+        print(f"Razones del diario obtenidas: {razon_diario}")
+        print(f"Objetivos obtenidos: {objetivos}")
+        
+        return personalidad, emocion_diario, razon_diario, objetivos
+
     def mostrar_chatbot(self):
         st.title("Chatbot Empático")
         user_input = st.text_input("Escribe algo...")
 
         if user_input:
             emocion = self.analizar_emocion(user_input)
+            personalidad, emocion_diario, razon_diario, objetivos = self.obtener_info_desde_embeddings()
+            
             st.write(f"Emoción detectada: {emocion}")
-            prompt_rico = self.enriquecer_prompt(user_input, emocion, "amable", "tristeza", "una mala noticia", "ser más feliz")
+            prompt_rico = self.enriquecer_prompt(user_input, emocion, personalidad, emocion_diario, razon_diario, objetivos)
             st.write(self.llamar_chatbot(prompt=prompt_rico))
-            st.write(self.respuestas.get(emocion, "Gracias por compartir. ¿Hay algo más en lo que pueda ayudarte?"))
+
+
     
     def llamar_chatbot(self, prompt, model="mistral-small-latest", max_tokens=150, system_personality="Eres un asistente muy amable, siempre buscando animar a la gente"):
         api_url = "https://api.mistral.ai/v1/chat/completions"
