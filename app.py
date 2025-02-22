@@ -9,7 +9,7 @@ st.set_page_config(page_title="KeleaCare", layout="wide")
 
 # Menú de navegación
 st.sidebar.title("Navigation")
-oocion = st.sidebar.radio("Choose an option:", ["Chatbot", "Emotional Diary", "Personality Profile", "Personal Goals"])
+opcion = st.sidebar.radio("Choose an option:", ["Chatbot", "Emotional Diary", "Personality Profile", "Personal Goals"])
 
 # Instancias de los módulos
 chatbot = Chatbot()
@@ -20,7 +20,7 @@ objetivos = ObjetivosPersonales()
 # Mostrar la opción seleccionada
 if opcion == "Chatbot":
     chatbot.mostrar_chatbot()
-elif opcion == "Emotional DIary":
+elif opcion == "Emotional Diary":
     diario.mostrar_diario()
 elif opcion == "Personality Profile":
     perfil.mostrar_perfil()
