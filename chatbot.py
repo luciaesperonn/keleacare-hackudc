@@ -34,6 +34,13 @@ class Chatbot:
         else:
             return "neutral"  # Emoción neutral
 
+    def enriquecer_prompt(self, texto: str, emocion, personalidad, emocion_diario, razon_diario, objetivos):
+        """
+        Enriquece el prompt con la emoción y el texto proporcionados.
+        """
+        return f"Responde en función de la emoción “{emocion}” manifestada por una persona de personalidad {personalidad}, quien ha experimentado recientemente sentimientos de {emocion_diario} debido a {razon_diario}. Si la situación lo permite, ofrece un consejo práctico que le ayude a alcanzar sus objetivos personales: {objetivos}. Analiza y responde basándote en el siguiente texto: {texto}"
+    # f"{prompt}\n\nEmoción detectada: {emocion}\nTexto: {texto}"
+
     def mostrar_chatbot(self):
         st.title("Chatbot Empático")
         user_input = st.text_input("Escribe algo...")
@@ -41,6 +48,8 @@ class Chatbot:
         if user_input:
             emocion = self.detectar_emocion(user_input)  # Detecta la emoción del texto
             st.write(f"Emoción detectada: {emocion}")
+            prompt_rico = self.enriquecer_prompt(user_input, emocion, "amable", "tristeza", "una mala noticia", "ser más feliz")
+            st.write(self.llamar_chatbot(prompt= prompt_rico))  # Llama al chatbot con el texto del usuario
             st.write(self.respuestas.get(emocion, "Gracias por compartir. ¿Hay algo más en lo que pueda ayudarte?"))
 
             # Mostrar recomendaciones basadas en los objetivos
