@@ -1,26 +1,33 @@
-from transformers import pipeline
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
+import numpy as np
 
-# Usar el modelo preentrenado
-modelo_emoroBerta = "bhadresh-savani/bert-base-uncased-emotion"
-analizador_emociones = pipeline("text-classification", model=modelo_emoroBerta)
+# Cargar el modelo y el tokenizador
+model_name = "bhadresh-savani/bert-base-uncased-emotion"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSequenceClassification.from_pretrained(model_name)
 
-# Función para analizar la emoción en el texto con un umbral de score
-def analizar_emocion_emoroBerta(texto, umbral=0.7):
-    resultado = analizador_emociones(texto)
-    label = resultado[0]['label']
-    score = resultado[0]['score']
+# Definir las emociones que el modelo puede detectar
+emotion_labels = ["sadness", "joy", "love", "anger", "fear", "surprise"]
+
+# Función para analizar todas las emociones
+def analizar_todas_emociones(texto):
+    # Tokenizar el texto
+    inputs = tokenizer(texto, return_tensors="pt", truncation=True, padding=True)
     
-    # Si el score es menor que el umbral, podemos asignar 'neutral' o ningún resultado
-    if score < umbral:
-        label = "neutral"
+    # Obtener las predicciones del modelo
+    with torch.no_grad():
+        logits = model(**inputs).logits
     
-    # Devolver todas las emociones y sus scores
-    emociones = {r['label']: r['score'] for r in resultado}
-
-    return label, score, emociones
+    # Calcular las probabilidades usando softmax
+    probabilidades = torch.softmax(logits, dim=-1).squeeze().numpy()
+    
+    # Crear un diccionario con las emociones y sus scores
+    emociones = {emotion_labels[i]: float(probabilidades[i]) for i in range(len(emotion_labels))}
+    
+    return emociones
 
 # Ejemplo de uso
 texto = "Lo que hizo me parece completamente inaceptable"
-emocion, score, todas_emociones = analizar_emocion_emoroBerta(texto) 
-print(f"Emoción detectada: {emocion} con un score de: {score}")
+todas_emociones = analizar_todas_emociones(texto)
 print("Todas las emociones detectadas:", todas_emociones)
