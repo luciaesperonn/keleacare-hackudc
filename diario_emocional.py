@@ -55,7 +55,7 @@ class DiarioEmocional:
                 return
 
             # Formatear la entrada para guardarla en el archivo
-            entrada_formateada = f"Entrada {len(self.diario) + 1}: {resumen} | Emoción: {emocion}"
+            entrada_formateada = f"{resumen} | {emocion}"
             
             # Guardar la entrada en el archivo
             self.guardar_diario(entrada_formateada)

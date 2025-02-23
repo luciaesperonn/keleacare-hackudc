@@ -14,16 +14,44 @@ class Chatbot:
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
         self.archivo_objetivos = "objetivos.txt"  # Archivo de objetivos
+        self.archivo_personalidad = "personalidad.txt"  # Archivo de personalidad
+        self.archivo_diario = "diario.txt"  # Archivo de diario (contiene resumen y emoción)
 
-    def cargar_objetivos(self):
+    def cargar_info_desde_txt(self, archivo):
         """
-        Carga los objetivos del usuario desde el archivo de texto.
+        Carga la información desde un archivo de texto.
+        Si el archivo no existe, devuelve un valor por defecto.
         """
-        if os.path.exists(self.archivo_objetivos):
-            with open(self.archivo_objetivos, "r", encoding="utf-8") as archivo:
-                return archivo.readlines()
-        return []
-        
+        if os.path.exists(archivo):
+            with open(archivo, "r", encoding="utf-8") as f:
+                lineas = f.readlines()
+                return lineas[-1].strip() if lineas else "No disponible"
+        return "No disponible"
+
+    def extraer_resumen_y_emocion(self, texto):
+        """
+        Extrae el resumen y la emoción desde una línea del diario.
+        Supone que el formato es: "{resumen} | {emocion}".
+        """
+        if " | " in texto:
+            resumen, emocion = texto.split(" | ")
+            return resumen.strip(), emocion.strip()
+        return "No disponible", "No disponible"
+
+    def obtener_info_desde_txt(self):
+        """
+        Obtiene la información de personalidad, emoción diaria y objetivos desde los archivos de texto.
+        """
+        # Obtener personalidad y objetivos desde sus archivos
+        personalidad = self.cargar_info_desde_txt(self.archivo_personalidad)
+        objetivos = self.cargar_info_desde_txt(self.archivo_objetivos)
+
+        # Obtener resumen y emoción desde diario.txt
+        linea_diario = self.cargar_info_desde_txt(self.archivo_diario)
+        resumen, emocion_diario = self.extraer_resumen_y_emocion(linea_diario)
+
+        return personalidad, emocion_diario, resumen, objetivos
+
     def analizar_emocion(self, texto):
         """
         Analiza el texto usando el modelo BERT y devuelve la emoción predominante.
@@ -43,12 +71,11 @@ class Chatbot:
         
         return emocion_predominante
 
-    def enriquecer_prompt(self, texto: str, emocion, personalidad, emocion_diario, razon_diario, objetivos):
+    def enriquecer_prompt(self, texto: str, emocion, personalidad, emocion_diario, resumen, objetivos):
         """
         Enriquece el prompt con la emoción y el texto proporcionados.
         """
-        return f"Responde en función de la emoción “{emocion}” manifestada por una persona de personalidad {personalidad}, quien ha experimentado recientemente sentimientos de {emocion_diario} debido a {razon_diario}. Si la situación lo permite, ofrece un consejo práctico que le ayude a alcanzar sus objetivos personales: {objetivos}. Analiza y responde basándote en el siguiente texto: {texto}"
-    # f"{prompt}\n\nEmoción detectada: {emocion}\nTexto: {texto}"
+        return f"Responde en función de la emoción “{emocion}” manifestada por una persona de personalidad {personalidad}, quien ha experimentado recientemente sentimientos de {emocion_diario} debido a {resumen}. Si la situación lo permite, ofrece un consejo práctico que le ayude a alcanzar sus objetivos personales: {objetivos}. Analiza y responde basándote en el siguiente texto: {texto}"
 
     def mostrar_chatbot(self):
         st.title("Chatbot Empático")
@@ -57,8 +84,13 @@ class Chatbot:
         if user_input:
             emocion = self.analizar_emocion(user_input)  # Detecta la emoción del texto
             st.write(f"Emoción detectada: {emocion}")
-            prompt_rico = self.enriquecer_prompt(user_input, emocion, "amable", "tristeza", "una mala noticia", "ser más feliz")
-            st.write(self.llamar_chatbot(prompt= prompt_rico))  # Llama al chatbot con el texto del usuario
+
+            # Obtener información desde los archivos de texto
+            personalidad, emocion_diario, resumen, objetivos = self.obtener_info_desde_txt()
+
+            # Crear el prompt enriquecido
+            prompt_rico = self.enriquecer_prompt(user_input, emocion, personalidad, emocion_diario, resumen, objetivos)
+            st.write(self.llamar_chatbot(prompt=prompt_rico))  # Llama al chatbot con el prompt enriquecido
 
     def llamar_chatbot(self, prompt, model="mistral-small-latest", max_tokens=150, system_personality="Eres un asistente muy amable, siempre buscando animar a la gente"):
         """
@@ -66,13 +98,13 @@ class Chatbot:
 
         Parámetros:
             prompt (str): El mensaje que se enviará al chatbot.
-            model (str): El modelo a utilizar (por defecto "mistral-7B").
+            model (str): El modelo a utilizar (por defecto "mistral-small-latest").
             max_tokens (int): La cantidad máxima de tokens para la respuesta.
 
         Retorna:
             str: La respuesta generada por el chatbot, o False en caso de error.
         """
-        api_url = "https://api.mistral.ai/v1/chat/completions"  # Ejemplo de URL, ajusta según la documentación oficial
+        api_url = "https://api.mistral.ai/v1/chat/completions"  # URL de la API de Mistral
         api_key = "fxjfZhsoN3PYMis5poL5rs8AHicjlwHO"  # Reemplaza con tu API key real
 
         payload = {
