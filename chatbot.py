@@ -7,7 +7,51 @@ import torch
 import numpy as np
 
 class Chatbot:
+    """
+    Esta clase define un chatbot empático que interactúa con el usuario, detecta emociones en sus mensajes y utiliza modelos de IA para generar respuestas personalizadas. 
+    """
     def __init__(self):
+        """
+        Inicializa las variables y objetos necesarios para el funcionamiento del chatbot.
+        Se configuran los archivos de texto, el modelo BERT para análisis de emociones, y el analizador VADER para sentimientos.
+
+        Atributos:
+        -----------
+        analyzer : SentimentIntensityAnalyzer
+            Analizador de sentimientos VADER.
+        emotion_labels : list
+            Lista de etiquetas de emociones.
+        model_name : str
+            Nombre del modelo BERT para análisis de emociones.
+        tokenizer : AutoTokenizer
+            Tokenizador del modelo BERT.
+        model : AutoModelForSequenceClassification
+            Modelo BERT para análisis de emociones.
+        archivo_objetivos : str
+            Nombre del archivo de objetivos.
+        archivo_personalidad : str
+            Nombre del archivo de personalidad.
+        archivo_diario : str
+            Nombre del archivo de diario.
+
+        Métodos:
+        --------    
+        cargar_info_desde_txt(archivo)
+            Carga la información desde un archivo de texto.
+        extraer_resumen_y_emocion(texto)
+            Extrae el resumen y la emoción desde una línea del diario.
+        obtener_info_desde_txt()
+            Obtiene la información de personalidad, emoción diaria y objetivos desde los archivos de texto.
+        analizar_emocion(texto)
+            Analiza el texto usando el modelo BERT y devuelve la emoción predominante.
+        enriquecer_prompt(texto, emocion, personalidad, emocion_diario, resumen, objetivos)
+            Enriquece el prompt con la emoción y el texto proporcionados.
+        mostrar_chatbot()
+            Muestra la interfaz del chatbot en Streamlit.
+        llamar_chatbot(prompt, model="mistral-small-latest", max_tokens=150, system_personality="Eres un asistente muy amable, siempre buscando animar a la gente")
+            Envía una consulta al chatbot de Mistral con el prompt proporcionado.
+    
+        """
         self.analyzer = SentimentIntensityAnalyzer()  # Inicializa el analizador de VADER
         self.emotion_labels = ["sadness", "joy", "love", "anger", "fear", "surprise"]   # Etiquetas de emociones
         self.model_name = "bhadresh-savani/bert-base-uncased-emotion"
@@ -21,6 +65,13 @@ class Chatbot:
         """
         Carga la información desde un archivo de texto.
         Si el archivo no existe, devuelve un valor por defecto.
+
+        Parámetros:
+            archivo (str): El nombre del archivo de texto.
+
+        Return:
+            str: El contenido del archivo o "No disponible" si el archivo no existe
+
         """
         if os.path.exists(archivo):
             with open(archivo, "r", encoding="utf-8") as f:
@@ -31,7 +82,12 @@ class Chatbot:
     def extraer_resumen_y_emocion(self, texto):
         """
         Extrae el resumen y la emoción desde una línea del diario.
-        Supone que el formato es: "{resumen} | {emocion}".
+
+        Parámetros:
+            texto (str): La línea del diario que contiene el resumen y la emoción.
+        
+        Return:
+            tuple: Una tupla con el resumen y la emoción extraídos, o ("No disponible", "No disponible") si no se puede extraer.
         """
         if " | " in texto:
             resumen, emocion = texto.split(" | ")
@@ -41,6 +97,10 @@ class Chatbot:
     def obtener_info_desde_txt(self):
         """
         Obtiene la información de personalidad, emoción diaria y objetivos desde los archivos de texto.
+
+        Return:
+            tuple: Una tupla con la personalidad, emoción diaria, resumen y
+            objetivos extraídos de los archivos de texto.
         """
         # Obtener personalidad y objetivos desde sus archivos
         personalidad = self.cargar_info_desde_txt(self.archivo_personalidad)
@@ -55,6 +115,13 @@ class Chatbot:
     def analizar_emocion(self, texto):
         """
         Analiza el texto usando el modelo BERT y devuelve la emoción predominante.
+
+        Parámetros:
+            texto (str): El texto a analizar.
+
+        Return:
+            str: La emoción predominante detectada en el
+            texto o "No disponible" si no se puede detectar.
         """
         # Tokenizar el texto
         inputs = self.tokenizer(texto, return_tensors="pt", truncation=True, padding=True)
@@ -74,10 +141,24 @@ class Chatbot:
     def enriquecer_prompt(self, texto: str, emocion, personalidad, emocion_diario, resumen, objetivos):
         """
         Enriquece el prompt con la emoción y el texto proporcionados.
+
+        Parámetros:
+            texto (str): El texto proporcionado por el usuario.
+            emocion (str): La emoción detectada en el texto.
+            personalidad (str): La personalidad del usuario.
+            emocion_diario (str): La emoción diaria del usuario.
+            resumen (str): El resumen de la entrada del diario.
+            objetivos (str): Los objetivos personales del usuario.
+        
+        Return:
+            str: El prompt enriquecido con la información proporcion
         """
         return f"Responde en función de la emoción “{emocion}” manifestada por una persona de personalidad {personalidad}, quien ha experimentado recientemente sentimientos de {emocion_diario} debido a {resumen}. Si la situación lo permite, ofrece un consejo práctico que le ayude a alcanzar sus objetivos personales: {objetivos}. Analiza y responde basándote en el siguiente texto: {texto}"
 
     def mostrar_chatbot(self):
+        """
+        Muestra la interfaz del chatbot en Streamlit.
+        """
         st.title("Chatbot Empático")
         user_input = st.text_input("Escribe algo...")
 
@@ -85,7 +166,7 @@ class Chatbot:
             emocion = self.analizar_emocion(user_input)  # Detecta la emoción del texto
             st.write(f"Emoción detectada: {emocion}")
 
-            # Obtener información desde los archivos de texto
+            # Obtener información desde los archivos de texto   
             personalidad, emocion_diario, resumen, objetivos = self.obtener_info_desde_txt()
 
             # Crear el prompt enriquecido
