@@ -1,98 +1,72 @@
+import os
 import streamlit as st
-import faiss
-import numpy as np
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
-from sentence_transformers import SentenceTransformer
+import numpy as np
 from chatbot import Chatbot
 
 class DiarioEmocional:
     def __init__(self):
-        self.modelo_embeddings = SentenceTransformer("all-MiniLM-L6-v2")
-        self.index = self.cargar_diario()
-        self.chatbot = Chatbot()
+        self.archivo_diario = "diario.txt"  # Archivo donde se guardan las entradas
+        # Cargar el modelo y el tokenizador para análisis de emociones
         self.model_name = "bhadresh-savani/bert-base-uncased-emotion"
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
         self.emotion_labels = ["sadness", "joy", "love", "anger", "fear", "surprise"]
+        self.diario = self.cargar_diario()  # Carga las entradas previas del diario
+        self.chatbot = Chatbot()
 
     def cargar_diario(self):
-        try:
-            index = faiss.read_index("diario.index")
-        except:
-            index = faiss.IndexFlatL2(384)  # Dimensión del modelo de embeddings
-        return index
-
-    def guardar_entrada(self, texto):
         """
-        Saves a text entry in the FAISS index.
-
-        Args:
-            text (str): The text of the entry to be saved.
-
-        This method encodes the text using the embeddings model,
-        adds the resulting vector to the FAISS index and saves the index to a file.
-        Returns:
-            None
+        Carga las entradas previas del diario desde el archivo de texto.
+        Si el archivo no existe, retorna una lista vacía.
         """
-        vector = self.modelo_embeddings.encode([texto])
-        self.index.add(np.array(vector, dtype=np.float32))
-        faiss.write_index(self.index, "diario.index")
+        if os.path.exists(self.archivo_diario):
+            with open(self.archivo_diario, "r", encoding="utf-8") as archivo:
+                return archivo.readlines()
+        return []
 
-    def analizar_emocion(self, texto):
-        inputs = self.tokenizer(texto, return_tensors="pt", truncation=True, padding=True)
-        with torch.no_grad():
-            logits = self.model(**inputs).logits
-        probabilidades = torch.softmax(logits, dim=-1).squeeze().numpy()
-        emocion_predominante = self.emotion_labels[np.argmax(probabilidades)]
-        return emocion_predominante
-
-    def recuperar_entradas_similares(self, texto, k=3):
+    def guardar_diario(self, entrada):
         """
-        Retrieves the most similar entries to a given text using an embeddings model.
-
-        Args:
-            text (str): The text for which you want to find similar entries.
-            k (int, optional): The number of similar entries to retrieve. Default is 3.
-
-        Returns:
-            list: An index list of the most similar entries. If no entries are found, returns an empty list.
+        Guarda una nueva entrada en el archivo de texto.
         """
-        vector = self.modelo_embeddings.encode([texto])
-        vector = np.array(vector, dtype=np.float32)
-        D, I = self.index.search(vector, k)  # Buscar las k entradas más similares
-        return I if len(I) > 0 else []
+        with open(self.archivo_diario, "a", encoding="utf-8") as archivo:
+            archivo.write(entrada + "\n")
 
-
-    def resumir_texto(self, texto, emocion, max_tokens=50, system_personality="You are an agent specializing in very short summaries."):
+    def resumir_texto(self, texto, emocion, max_tokens=50, system_personality="Eres un agente especializado en resúmenes extremadamente cortos."):
         """
-        Uses a a chatbot to summarize a text based on a given emotion.
+        Utiliza el chatbot para resumir el texto.
         """
         # Crea un prompt para solicitar el resumen del texto
-        prompt = f"Please write directly the reason for the feeling {emocion} in this text:{texto}."
+        prompt = f"Por favor, obtén la razón del sentimiento {emocion} en este texto:\n\n{texto}"
         # Llama al método 'llamar_chatbot' del objeto 'chatbot'
         respuesta = self.chatbot.llamar_chatbot(prompt, max_tokens=max_tokens, system_personality=system_personality)
         return respuesta
-    
+
     def mostrar_diario(self):
-        """
-        Displays the emotional diary interface in Streamlit.
+        st.title("Diario Emocional")
+        user_input = st.text_area("Escribe sobre tu día...")
 
-        This method creates an interface in Streamlit where the user can write about his day,
-        save the entry and view the entries saved in the journal.
-        Args:
-            None
-
-        Returns:
-            None
-        """
-        st.title("Emotional Diary")
-        user_input = st.text_area("Write about your day...")
-
-        if st.button("Save the entry"):
-            emocion = self.analizar_emocion(user_input)
+        if st.button("Guardar entrada"):
+            emocion = self.chatbot.analizar_emocion(user_input)
             resumen = self.resumir_texto(texto=user_input, emocion=emocion)
-            self.guardar_entrada(resumen)
-            st.success("Entry saved successfully!")
-            st.write(f"Detected emotion: {emocion}")
-            st.write(f"Entry summary: {resumen}")
+            if not resumen:
+                st.error("No se pudo generar un resumen. Inténtalo de nuevo.")
+                return
+
+            # Formatear la entrada para guardarla en el archivo
+            entrada_formateada = f"Entrada {len(self.diario) + 1}: {resumen} | Emoción: {emocion}"
+            
+            # Guardar la entrada en el archivo
+            self.guardar_diario(entrada_formateada)
+            
+            # Añadir la entrada al diario en memoria
+            self.diario.append(entrada_formateada)
+            
+            st.success("Entrada guardada con éxito!")
+
+        # Mostrar las entradas del diario
+        if self.diario:
+            st.subheader("Tus entradas:")
+            for entrada in self.diario:
+                st.write(entrada)

@@ -1,137 +1,79 @@
 import streamlit as st
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+import os
 import requests
-import faiss
-import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
 class Chatbot:
-    """
-    Chatbot que analiza sentimientos, genera embeddings y clasifica emociones en textos.
-
-    Atributos:
-        analyzer: SentimentIntensityAnalyzer
-            Analizador de sentimientos de VADER.
-        modelo_embeddings: SentenceTransformer
-            Modelo de embeddings de frases basado en "all_MiniLM-L6-v2".
-        faiss_index: faiss.IndexFlatL2
-            Índice FAISS utilizado para la búsqueda eficiente de objetivos.
-        model_name: str
-            Nombre del modelo de clasificación de emociones ("bhadresh-savani/bert-base-uncased-emotion").
-        model: AutoModelForSequenceClassification
-            Modelo preentrenado de clasificación de emociones.
-        tokenizer: AutoTokenizer
-            Tokenizador asociado al modelo de clasificación de emociones.
-        emotion_labels: list
-            Lista de etiquetas de emociones utilizadas en la clasificación.
-    
-    Métodos:
-        cargar_objetivos():
-            Carga los objetivos desde FAISS si existen, o crea un nuevo índice.
-        agregar_objetivo(objetivo):
-            Añade un nuevo objetivo al índice FAISS.
-        analizar_emocion(texto):
-            Analiza la emoción predominante en el texto utilizando un modelo preentrenado.
-        enriquecer_prompt(texto, emocion, personalidad, emocion_diario, razon_diario, objetivos):
-            Enriquece el prompt con la información obtenida de los embeddings.
-        obtener_info_desde_embeddings(k=3):
-            Obtiene la información relevante de los embeddings almacenados, recuperando los k más cercanos.
-        mostrar_chatbot():
-            Muestra la interfaz del chatbot en Streamlit.
-        llamar_chatbot(prompt, model="mistral-small-latest", max_tokens=300, system_personality="You are a very kind assistant, always looking to encourage people."):
-            Llama al chatbot de Mistral AI y devuelve la respuesta generada.
-
-    """
     def __init__(self):
-        self.analyzer = SentimentIntensityAnalyzer()
-        self.modelo_embeddings = SentenceTransformer("all-MiniLM-L6-v2")
-        self.faiss_index = self.cargar_objetivos()
+        self.analyzer = SentimentIntensityAnalyzer()  # Inicializa el analizador de VADER
+        self.emotion_labels = ["sadness", "joy", "love", "anger", "fear", "surprise"]   # Etiquetas de emociones
         self.model_name = "bhadresh-savani/bert-base-uncased-emotion"
-        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        self.emotion_labels = ["sadness", "joy", "love", "anger", "fear", "surprise"]
-    
+        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name)
+        self.archivo_objetivos = "objetivos.txt"  # Archivo de objetivos
+
     def cargar_objetivos(self):
         """
-        Carga los objetivos desde FAISS si existen, o crea un nuevo índice.
-
+        Carga los objetivos del usuario desde el archivo de texto.
         """
-        try:
-            index = faiss.read_index("objetivos.index")
-        except:
-            index = faiss.IndexFlatL2(384)  # Dimensión del modelo de embeddings
-        return index
-    
-    def agregar_objetivo(self, objetivo):
-        """
-        Añade un nuevo objetivo al índice FAISS.
-        """
-        vector = self.modelo_embeddings.encode([objetivo])
-        self.faiss_index.add(np.array(vector, dtype=np.float32))
-        faiss.write_index(self.faiss_index, "objetivos.index")
-    
+        if os.path.exists(self.archivo_objetivos):
+            with open(self.archivo_objetivos, "r", encoding="utf-8") as archivo:
+                return archivo.readlines()
+        return []
+        
     def analizar_emocion(self, texto):
         """
-        Analiza la emoción predominante en el texto utilizando
-        un modelo preentrenado.
+        Analiza el texto usando el modelo BERT y devuelve la emoción predominante.
         """
+        # Tokenizar el texto
         inputs = self.tokenizer(texto, return_tensors="pt", truncation=True, padding=True)
+        
+        # Obtener las predicciones del modelo
         with torch.no_grad():
             logits = self.model(**inputs).logits
+        
+        # Calcular las probabilidades usando softmax
         probabilidades = torch.softmax(logits, dim=-1).squeeze().numpy()
+        
+        # Obtener la emoción con la probabilidad más alta
         emocion_predominante = self.emotion_labels[np.argmax(probabilidades)]
+        
         return emocion_predominante
-    
-    def enriquecer_prompt(self, texto, emocion, personalidad, emocion_diario, razon_diario, objetivos):
-        """
-        Enriquece el prompt con la información obtenida de los embeddings.
-        """
-        return f"Responds based on the emotion ‘{emocion}’ manifested by a person of personality {personalidad}, who has recently experienced feelings of {emocion_diario} due to {razon_diario}. If the situation allows, offer practical advice to help him/her achieve his/her personal {objetivos}. But focus on analyze and respond based on the following text without forgiving the context previously given: {texto}"
 
-    def obtener_info_desde_embeddings(self, k=3):
+    def enriquecer_prompt(self, texto: str, emocion, personalidad, emocion_diario, razon_diario, objetivos):
         """
-        Obtiene la información relevante de los embeddings almacenados,
-        recuperando los k más cercanos.
+        Enriquece el prompt con la emoción y el texto proporcionados.
         """
-        def obtener_multiples_resultados(query):
-            vector = self.modelo_embeddings.encode([query], convert_to_numpy=True)
-            D, I = self.faiss_index.search(vector, k)
-            resultados = ["Not available" if idx == -1 else f"Result {i+1} stored" for i, idx in enumerate(I[0])]
-            return resultados
-        
-        # Obtener múltiples valores para cada categoría
-        personalidad = obtener_multiples_resultados("personalidad")
-        emocion_diario = obtener_multiples_resultados("emocion_diario")
-        razon_diario = obtener_multiples_resultados("razon_diario")
-        objetivos = obtener_multiples_resultados("objetivos")
-        
-        return personalidad, emocion_diario, razon_diario, objetivos
+        return f"Responde en función de la emoción “{emocion}” manifestada por una persona de personalidad {personalidad}, quien ha experimentado recientemente sentimientos de {emocion_diario} debido a {razon_diario}. Si la situación lo permite, ofrece un consejo práctico que le ayude a alcanzar sus objetivos personales: {objetivos}. Analiza y responde basándote en el siguiente texto: {texto}"
+    # f"{prompt}\n\nEmoción detectada: {emocion}\nTexto: {texto}"
 
     def mostrar_chatbot(self):
-        """
-        Muestra la interfaz del chatbot en Streamlit.
-        """
-        st.title("Empathic chatbot")
-        user_input = st.text_input("Write something...")
+        st.title("Chatbot Empático")
+        user_input = st.text_input("Escribe algo...")
 
         if user_input:
-            emocion = self.analizar_emocion(user_input)
-            personalidad, emocion_diario, razon_diario, objetivos = self.obtener_info_desde_embeddings()
-            
-            st.write(f"Detected emotion: {emocion}")
-            prompt_rico = self.enriquecer_prompt(user_input, emocion, personalidad, emocion_diario, razon_diario, objetivos)
-            st.write(self.llamar_chatbot(prompt=prompt_rico))
+            emocion = self.analizar_emocion(user_input)  # Detecta la emoción del texto
+            st.write(f"Emoción detectada: {emocion}")
+            prompt_rico = self.enriquecer_prompt(user_input, emocion, "amable", "tristeza", "una mala noticia", "ser más feliz")
+            st.write(self.llamar_chatbot(prompt= prompt_rico))  # Llama al chatbot con el texto del usuario
 
+    def llamar_chatbot(self, prompt, model="mistral-small-latest", max_tokens=150, system_personality="Eres un asistente muy amable, siempre buscando animar a la gente"):
+        """
+        Envía una consulta al chatbot de Mistral con el prompt proporcionado.
 
-    
-    def llamar_chatbot(self, prompt, model="open-mistral-nemo", max_tokens=500, system_personality="You are a very kind assistant, always looking to encourage people."):
+        Parámetros:
+            prompt (str): El mensaje que se enviará al chatbot.
+            model (str): El modelo a utilizar (por defecto "mistral-7B").
+            max_tokens (int): La cantidad máxima de tokens para la respuesta.
+
+        Retorna:
+            str: La respuesta generada por el chatbot, o False en caso de error.
         """
-        Llama al chatbot de Mistral AI y devuelve la respuesta generada.
-        """
-        api_url = "https://api.mistral.ai/v1/chat/completions"
-        api_key = "fxjfZhsoN3PYMis5poL5rs8AHicjlwHO"
+        api_url = "https://api.mistral.ai/v1/chat/completions"  # Ejemplo de URL, ajusta según la documentación oficial
+        api_key = "fxjfZhsoN3PYMis5poL5rs8AHicjlwHO"  # Reemplaza con tu API key real
 
         payload = {
             "model": model,
