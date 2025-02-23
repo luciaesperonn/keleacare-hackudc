@@ -1,41 +1,27 @@
 import streamlit as st
-import faiss
-import numpy as np
-from sentence_transformers import SentenceTransformer
+import os
 
 class PerfiladoPersonalidad:
     def __init__(self):
-        self.modelo_embeddings = SentenceTransformer("all-MiniLM-L6-v2")
-        self.faiss_index = self.cargar_perfiles()
-    
-    def cargar_perfiles(self):
-        """
-        Load the index FAISS with profiles of personality if it exists, or create a new one.
-        """
-        try:
-            index = faiss.read_index("personalidades.index")
-        except:
-            index = faiss.IndexFlatL2(384)  # Dimensión del modelo de embeddings
-        return index
-    
+        self.archivo_diario = "diario.txt"  # Mismo archivo que el diario emocional
+
     def guardar_personalidad(self, personalidad):
         """
-        Save the personality test result in FAISS.
+        Guarda el resultado del test de personalidad en el archivo diario.txt.
         """
-        vector = self.modelo_embeddings.encode([personalidad])
-        self.faiss_index.add(np.array(vector, dtype=np.float32))
-        faiss.write_index(self.faiss_index, "personalidades.index")
-    
+        with open(self.archivo_diario, "a", encoding="utf-8") as archivo:
+            archivo.write(f"Personalidad: {personalidad}\n")
+
     def mostrar_perfil(self):
-        st.title("Personality Profile")
-        st.write("If you want to know what personality you have, take this test: [Big Five Test](https://bigfive-test.com/es)")
-        st.write("Then, write the result you got here.")
+        st.title("Perfil de Personalidad")
+        st.write("Si quieres saber qué personalidad tienes, realiza este test: [Big Five Test](https://bigfive-test.com/es)")
+        st.write("Luego, escribe aquí el resultado que obtuviste.")
 
-        personalidad = st.text_input("Enter your personality test result:")
+        personalidad = st.text_input("Introduce tu resultado del test de personalidad:")
 
-        if st.button("Save personality"):
+        if st.button("Guardar personalidad"):
             if personalidad:
                 self.guardar_personalidad(personalidad)
-                st.success("Personality saved successfully!")
+                st.success("¡Personalidad guardada con éxito!")
             else:
-                st.warning("Please enter your test result.")
+                st.warning("Por favor, introduce tu resultado del test.")
