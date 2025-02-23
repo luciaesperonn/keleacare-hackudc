@@ -14,8 +14,6 @@ En la actualidad, muchas personas enfrentan dificultades para gestionar sus emoc
 Para ejecutar KeleaCare correctamente, se requiere la instalación de las siguientes librerías y herramientas:
 - **Streamlit** (para la interfaz de usuario interactiva)
 - **Transformers** (para el análisis de emociones)
-- **SentenceTransformer** (para la generación de embeddings de texto)
-- **FAISS** (para la búsqueda de similitudes en bases de datos vectoriales)
 - **Torch** (para el uso de modelos de deep learning)
 - **Requests** (para comunicación con APIs externas)
 - **VaderSentiment** (para análisis de sentimiento léxico)
